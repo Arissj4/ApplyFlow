@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum JobPostingStatus {
+  NEW
+  SAVED
+  DISMISSED
+  EXPIRED
+}
+
+enum ApplicationStatus {
+  APPLIED
+  SCREENING
+  ASSESSMENT
+  INTERVIEW
+  OFFER
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum ApplicationEventType {
+  STATUS_CHANGED
+  EMAIL_RECEIVED
+  NOTE_ADDED
+  FOLLOW_UP
+}
+
+enum ApplicationEventSource {
+  MANUAL
+  EMAIL
+  JOB_BOARD
+  COMPANY_PORTAL
+  SYSTEM
+}
+
+model User {
+  id          String       @id @default(uuid()) @db.Uuid
+  email       String       @unique
+  name        String?
+  companies   Company[]
+  jobPostings JobPosting[]
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @db.Timestamptz(3)
+
+  @@map("users")
+}
+
+model Company {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  name       String
+  websiteUrl String?
+  careersUrl String?
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobPostings JobPosting[]
+
+  @@unique([userId, name])
+  @@map("companies")
+}
+
+model JobPosting {
+  id           String           @id @default(uuid()) @db.Uuid
+  userId       String           @db.Uuid
+  companyId    String           @db.Uuid
+  title        String
+  location     String?
+  description  String?          @db.Text
+  source       String           @default("manual")
+  externalId   String?
+  url          String?
+  status       JobPostingStatus @default(NEW)
+  publishedAt  DateTime?        @db.Timestamptz(3)
+  discoveredAt DateTime         @default(now()) @db.Timestamptz(3)
+  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime         @updatedAt @db.Timestamptz(3)
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  application Application?
+
+  @@index([userId, status])
+  @@index([companyId])
+  @@index([userId, source, externalId])
+  @@map("job_postings")
+}
+
+model Application {
+  id                String            @id @default(uuid()) @db.Uuid
+  jobPostingId      String            @unique @db.Uuid
+  status            ApplicationStatus @default(APPLIED)
+  appliedAt         DateTime          @default(now()) @db.Timestamptz(3)
+  lastActivityAt    DateTime          @default(now()) @db.Timestamptz(3)
+  nextFollowUpAt    DateTime?         @db.Timestamptz(3)
+  externalStatusUrl String?
+  notes             String?           @db.Text
+  createdAt         DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime          @updatedAt @db.Timestamptz(3)
+
+  jobPosting JobPosting         @relation(fields: [jobPostingId], references: [id], onDelete: Cascade)
+  events     ApplicationEvent[]
+
+  @@index([status])
+  @@index([nextFollowUpAt])
+  @@map("applications")
+}
+
+model ApplicationEvent {
+  id            String                 @id @default(uuid()) @db.Uuid
+  applicationId String                 @db.Uuid
+  type          ApplicationEventType
+  source        ApplicationEventSource @default(MANUAL)
+  fromStatus    ApplicationStatus?
+  toStatus      ApplicationStatus?
+  title         String?
+  details       String?                @db.Text
+  occurredAt    DateTime               @default(now()) @db.Timestamptz(3)
+  createdAt     DateTime               @default(now()) @db.Timestamptz(3)
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, occurredAt])
+  @@map("application_events")
+}
