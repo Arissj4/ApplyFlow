@@ -1,4 +1,4 @@
-import {signOut} from "@/auth";
+import { signOut } from "@/auth";
 
 export default function Home() {
   return (
@@ -6,7 +6,7 @@ export default function Home() {
       <h1>Welcome to ApplyFlow</h1>
       <form
         action={async () => {
-          "use server"
+          "use server";
           await signOut();
         }}
       >
