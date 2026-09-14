@@ -1,14 +1,17 @@
-import { Suspense } from "react";
-
+import { signIn } from "@/auth";
 export default function LoginPage() {
   return (
     <main>
       <header>Login page</header>
-
       <section>
-        <Suspense>
-          <button>login</button>
-        </Suspense>
+          <form
+              action={async () => {
+                  "use server";
+                  await signIn("google", {redirectTo: "/"});
+              }}
+          >
+              <button type="submit">login</button>
+          </form>
       </section>
     </main>
   );
